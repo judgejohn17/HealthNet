@@ -1,0 +1,14 @@
+{% extends 'healthnet/base/base_2.html' %}
+
+{% block content %}
+    <h1>Edit your Profile</h1>
+    <p>To edit your profile, edit the cooresponding field below.</p>
+    <div>
+        <form action = "" method = "post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            </br><input type="submit" value="Save">
+        </form>
+    </div>
+    <a href = {% url 'employee-detail' pk=employee.pk %}>Profile</a>
+{% endblock %}

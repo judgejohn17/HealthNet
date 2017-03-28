@@ -1,0 +1,16 @@
+Known Bugs (unfixed):	
+	Only the doctor of an appointment can see it, not it's patient	
+	Patients are not required to give their first and last name
+
+Known Non-functional Errors (unfixed):
+
+Fixed Bugs:
+	11/7 - Salary can be set below 0
+	12/3 - Authentication system rejects SuperAdmins
+	12/3 - Anyone can be selected as the doctor of an appointment - even patients
+
+Fixed Non-functional Errors:
+	11/7 - admin classes lacked documentation
+	11/7 - major DRY violations in user forms
+	11/7 - major DRY violations in admin classes
+

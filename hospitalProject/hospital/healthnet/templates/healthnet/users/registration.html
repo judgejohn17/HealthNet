@@ -1,0 +1,14 @@
+{% extends 'healthnet/base/base_0.html' %}
+
+{% block content %}
+    <h1>Registration</h1>
+    <p>To register, please provide us with the information requested below. All fields must be filled.</p>
+    <div>
+        <form action = "" method = "POST">
+            {% csrf_token %}
+            {{ form.as_p }}
+            </br><input type="submit" value="Register">
+        </form>
+    </div>
+{% endblock %}
+<!-- this is a change -->

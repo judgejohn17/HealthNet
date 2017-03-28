@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>Healthnet</title>
+
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+
+    {% load static %}
+    <link href="{% static "assets/dashboard.css" %}" rel="stylesheet">
+    <style>
+    .edit{
+        font-size: 20px;
+    }
+    </style>
+  </head>
+
+  <body>
+    <nav class="navbar navbar-inverse navbar-fixed-top">
+      <div class="container-fluid">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand" href="">Welcome to HealthNet {{user.username}}</a>
+        </div>
+        <div id="navbar" class="navbar-collapse collapse">
+          <ul class="nav navbar-nav navbar-right">
+            <li><a href={% url 'landing' %}>Dashboard</a></li>
+            {% if role == "patient" %}
+                <li><a href={% url 'profile-detail' pk=user.pk %}>Profile</a></li>
+            {% else %}
+                <li><a href={% url 'employee-detail' pk=user.pk %}>Profile</a></li>
+            {% endif %}
+            <li><a href={% url 'logout_view' %}>Log Out</a></li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <div class="container-fluid">
+      <div class="row">
+        <div class="col-sm-3 col-md-2 sidebar">
+          <ul class="nav nav-sidebar">
+            <li class="active"><a href={% url 'landing' %}>Overview<span class="sr-only">(current)</span></a></li>
+            <li><a href={% url 'calendar' %}>Calendar</a></li>
+            {% if role == 'patient' %}
+                <li><a href={% url 'create-appointment' %}>Create Appointment</a></li>
+            {% else %}
+                <li><a href = {% url 'employee-create-appointment' %}>Create Appointment</a></li>
+            {% endif %}
+            {% if role == "doctor" %}
+                <li><a href = {% url 'verify appointment' %}>Verify/Update Appointment</a></li>
+            {% endif %}
+            {% if role == "patient" %}
+                <li><a href = {% url 'update Appointment'%}>Update Appointment</a></li>
+            {% endif %}
+            {% if role == "nurse" %}
+                <li><a href = {% url 'update Appointment Nurse'%}> Update Appointment</a></li>
+            {% endif %}
+            {% if role == "doctor" %}
+                <li><a href = {% url 'delete appointment'%}>Delete Appointment</a></li>
+            {% endif %}
+            {% if role == "patient" %}
+                <li><a href = {% url 'delete appointment patient'%}>Delete Appointment</a></li>
+            {% endif %}
+            <!-- <li><a href="#">Export</a></li> -->
+          </ul>
+          <ul class="nav nav-sidebar">
+            {% if role == "patient" %}
+                <li><a href = {% url 'medical-information-diagnosis' %}>View Past Diagnoses</a></li>
+                <li><a href = {% url 'medical-information-prescription' %}>View Past Prescriptions</a></li>
+                <li><a href = {% url 'medical-information-testresult' %}>View Past Test Results</a></li>
+            {% endif %}
+            {% if role == "doctor" or role == "nurse" or role == "superadmin" or role == "administrator" %}
+                <li><a href = {% url 'view-patient-list' %}>All Registered Patients</a></li>
+            {% endif %}
+            {% if role == "doctor" or role == "superadmin" or role == "administrator" %}
+                <li><a href = {% url 'view-doctor-list' %}>View Doctor List</a></li>
+                <li><a href = {% url 'create-condition' %}>Add A New Condition</a></li>
+                <li><a href = {% url 'create-drug' %}>Add A New Drug</a></li>
+            {% endif %}
+            {% if role == "doctor" %}
+                <li><a href = {% url 'create-test-results' %}>Create Test Results</a></li>
+                <li><a href = {% url 'create-diagnosis' %}>Create a Diagnosis</a></li>
+                <li><a href = {% url 'create-prescription' %}>Create a Prescription</a></li>
+                <li><a href = {% url 'list-prescriptions' %}>Delete Prescription</a></li>
+            {% endif %}
+          </ul>
+          <ul class="nav nav-sidebar">
+            <li><a href={% url 'send message' %}>Send Message</a></li>
+            <li><a href={% url 'message index' %}>View Inbox</a></li>
+            <!-- <li><a href="">One more nav</a></li>
+            <li><a href="">Another nav item</a></li>
+            <li><a href="">More navigation</a></li> -->
+          </ul>
+          <ul class="nav nav-sidebar">
+            <!-- <li><a href="">Nav item again</a></li>
+            <li><a href="">One more nav</a></li> -->
+            {% if role == "administrator" %}
+                <li><a href={% url 'activity-log' %}>Activity Log</a></li>
+                <li><a href={% url 'Statistics' %}>Statistics</a></li>
+            {% endif %}
+            {% if role == "administrator" or role == "superadmin" %}
+                <li><a href = {% url 'create-nurse-account' %}>Create Nurse Account</a></li>
+                <li><a href = {% url 'create-doctor-account' %}>Create Doctor Account</a></li>
+                <li><a href = {% url 'create-administrator-account' %}>Create Administrator Account</a></li>
+            {% endif %}
+          </ul>
+        </div>
+        <div class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 main">
+          <h1 class="page-header">Edit Your Profile</h1>
+            <p>To edit your profile, edit the corresponding field below.</p>
+            <div>
+                <form action = "" method = "post">
+                    {% csrf_token %}
+                    {{ form.as_p }}
+                    </br><input type="submit" value="Save">
+                </form>
+            </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

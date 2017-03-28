@@ -1,0 +1,12 @@
+{% extends 'healthnet/base/base_2.html' %}
+
+{% block content %}
+    <h1>Doctor List</h1>
+    <ul>
+    {% for doctor in doctor_list %}
+        <li>
+            <a href={% url 'employee-detail' pk=doctor.pk %}>{{ doctor.last_name }}, {{ doctor.first_name }}</a>
+        </li>
+    {% endfor %}
+    </ul>
+{% endblock %}

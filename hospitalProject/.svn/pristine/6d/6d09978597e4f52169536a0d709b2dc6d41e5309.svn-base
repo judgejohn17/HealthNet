@@ -1,0 +1,8 @@
+{% extends 'healthnet/base/base_2.html' %}
+
+{% block content %}
+    <h1>Success</h1>
+    <p>
+        {{ patient.username }} was transferred from {{ hospital_from.name }} to {{ hospital_to.name }}
+    </p>
+{% endblock %}

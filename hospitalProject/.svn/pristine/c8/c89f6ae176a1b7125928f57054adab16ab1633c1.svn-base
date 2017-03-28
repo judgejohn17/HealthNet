@@ -1,0 +1,144 @@
+{% extends 'healthnet/base/base_2.html' %}
+
+{% block content %}
+    <style>
+        .link{
+            font-size: 16px;
+            text-decoration: none;
+        }
+        .hello{
+            font-weight: bold;
+        }
+    </style>
+    <h1 class="hello">Hello, {{user.username}} </h1>
+    <div>
+        <a class="link" href = {% url 'calendar' %}>Calendar</a>
+    </div>
+    {% if role == 'patient' %}
+        <div>
+            <a class="link" href = {% url 'create-appointment' %}>Create Appointment</a>
+        </div>
+    {% else %}
+        <div>
+            <a class="link" href = {% url 'employee-create-appointment' %}>Create Appointment</a>
+        </div>
+    {% endif %}
+    {% if role == "doctor" %}
+        <div>
+            <a href = {% url 'verify appointment' %}>Verify/Update Appointment</a>
+        </div>
+    {% endif %}
+    {% if role == "patient" %}
+        <div>
+            <a href = {% url 'update Appointment'%}>Update Appointment</a>
+        </div>
+    {% endif %}
+    {% if role == 'nurse' %}
+        <div>
+            <a href = {% url 'update Appointment Nurse'%}> Update Appointment</a>
+        </div>
+    {% endif %}
+    {% if role == 'doctor' %}
+        <div>
+            <a href = {% url 'delete appointment'%}>Delete Appointment</a>
+        </div>
+    {% endif %}
+    {% if role == 'patient' %}
+        <div>
+            <a href = {% url 'delete appointment patient'%}>Delete Appointment Patient</a>
+        </div>
+    {% endif %}
+    {% if role == "patient" %}
+        <div>
+            <a class="link" href = {% url 'profile-detail' pk=user.pk %}>Profile</a>
+        </div>
+    {% elif role != 'superadmin' %}
+        <div>
+            <a class="link" href = {% url 'employee-detail' pk=user.pk %}>Profile</a>
+        </div>
+    {% endif %}
+    {% if role != 'superadmin' %}
+        <div>
+            <a class="link" href = {% url 'send message' %}>Send Message</a>
+        </div>
+        <div>
+            <a class="link" href = {% url 'message index' %}>View Inbox</a>
+        </div>
+    {% endif %}
+    {% if role == "administrator" or role == "superadmin" %}
+        <div>
+            <a class="link" href = {% url 'activity-log' %}>Activity Log</a>
+        </div>
+        <div>
+            <a class="link" href = {% url 'Statistics' %}>Statistics</a>
+        </div>
+    {% endif %}
+    {% if role == 'doctor' %}
+        <div>
+            <a href = {% url 'list-prescriptions' %}>Delete Prescription</a>
+        </div>
+    {% endif %}
+    {% if role == 'doctor' or role == 'nurse' or role == 'superadmin' or role == 'administrator' %}
+        <div>
+            <a href = {% url 'view-patient-list' %}>All Registered Patients</a>
+        </div>
+    {% endif %}
+    {% if role == 'doctor' or role == 'superadmin' or role == 'administrator' %}
+        <div>
+            <a href = {% url 'create-diagnosis' %}>Create a Diagnosis</a>
+        </div>
+    {% endif %}
+    {% if role == 'doctor' or role == 'superadmin' or role == 'administrator' %}
+        <div>
+            <a href = {% url 'create-prescription' %}>Create a Prescription</a>
+        </div>
+    {% endif %}
+    {% if role == 'doctor' or role == 'superadmin' or role == 'administrator' %}
+        <div>
+            <a href = {% url 'create-drug' %}>Add A New Drug</a>
+        </div>
+    {% endif %}
+    {% if role == 'doctor' or role == 'superadmin' or role == 'administrator' %}
+        <div>
+            <a href = {% url 'create-condition' %}>Add A New Condition</a>
+        </div>
+    {% endif %}
+    {% if role == 'patient' %}
+        <div>
+            <a href = {% url 'medical-information-diagnosis' %}>View Past Diagnoses</a>
+        </div>
+    {% endif %}
+    {% if role == 'patient' %}
+        <div>
+            <a href = {% url 'medical-information-prescription' %}>View Past Prescriptions</a>
+        </div>
+    {% endif %}
+    {% if role == 'patient' %}
+        <div>
+            <a href = {% url 'medical-information-testresult' %}>View Past Test Results</a>
+        </div>
+    {% endif %}
+    {% if role == 'administrator' or role == 'superadmin'%}
+        <div>
+            <a href = {% url 'create-nurse-account' %}>Create A Nurse</a>
+        </div>
+    {% endif %}
+    {% if role == 'administrator' or role == 'superadmin'%}
+        <div>
+            <a href = {% url 'create-doctor-account' %}>Create A Doctor</a>
+        </div>
+    {% endif %}
+    {% if role == 'administrator' or role == 'superadmin'%}
+        <div>
+            <a href = {% url 'create-administrator-account' %}>Create A Hospital Administrator</a>
+        </div>
+    {% endif %}
+    {% if role == 'administrator' or role == 'superadmin' or role == 'doctor'%}
+        <div>
+            <a href = {% url 'create-test-results' %}>Create Test Results</a>
+        </div>
+        <div>
+            <a href = {% url 'view-doctor-list' %}>View Doctor List</a>
+        </div>
+    {% endif %}
+{% endblock %}

@@ -1,0 +1,13 @@
+{% extends 'healthnet/base/base_2.html' %}
+
+{% block content %}
+    <h1>Delete here</h1>
+
+    <div>
+
+       <form action="" method="post">{% csrf_token %}
+    <p>Are you sure you want to delete {{ item.person }}'s appointment at the time {{item.start_time}} ?</p>
+    <input type="submit" value="Confirm" />
+</form>
+    </div>
+{% endblock %}

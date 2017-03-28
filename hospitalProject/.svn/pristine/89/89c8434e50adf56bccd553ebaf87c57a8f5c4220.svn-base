@@ -1,0 +1,230 @@
+from django.db import models
+from django.contrib.auth.models import User
+import datetime
+from django.core.validators import RegexValidator, MinValueValidator
+
+TEST_CHOICES = (
+    ('PEN', 'Pending'),
+    ('POS', 'Positive'),
+    ('NEG', 'Negative'),
+    ('INC', 'Inconclusive')
+)
+prescription_list = []
+diagnosis_list = []
+
+
+class Patient(User):
+    class Meta:
+        # Without this, the Patient class inherits the verbose name of the User.
+        # This causes it to appear as "User" in the admin site.
+        verbose_name = "Patient";
+
+    insurance_plan = models.ForeignKey('InsurancePlan')
+    date_of_birth = models.DateField(default=0)
+    phone_number = models.CharField(max_length=10, validators=[
+        RegexValidator('[0-9]{10}', "Must be 10 digits, numbers only")])
+    contact_first_name = models.CharField(max_length=50, blank=True)
+    contact_last_name = models.CharField(max_length=50, blank=True)
+    contact_phone_number = models.CharField(max_length=10, blank=True, validators=[
+        RegexValidator('[0-9]{10}|^$', "Must be 10 digits, numbers only")])
+    doctor = models.ForeignKey('Doctor')
+    admission = models.ForeignKey('Hospital',blank=True,default=None,null=True)
+
+    def __repr__(self):
+        return repr([self.first_name, self.last_name, self.username, self.password, self.email, self.insurance_plan,
+                     self.date_of_birth, self.phone_number, self.emergency_contact])
+
+    def role(self):
+        return "patient";
+
+
+class Employee(User):
+    salary = models.IntegerField(validators=[MinValueValidator(0, "Must not be negative")])
+
+    def role(self):
+        return "admin";
+
+
+class HospitalAdministrator(Employee):
+    class Meta:
+        # Without this, the HospitalAdministrator class inherits the verbose name of the User.
+        # This causes it to appear as "User" in the admin site.
+        verbose_name = "Hospital Administrator";
+
+    hospital = models.ForeignKey('Hospital')
+
+    def __repr__(self):
+        return repr([self.first_name, self.last_name, self.username, self.password, self.email, self.salery,
+                     self.hospital])
+
+
+class Doctor(Employee):
+    class Meta:
+        # Without this, the Doctor class inherits the verbose name of the User.
+        # This causes it to appear as "User" in the admin site.
+        verbose_name = "Doctor"
+        permissions = (("write_perscriptions", "Can write perscriptions for patients"),
+                       ("give_diagnosis", "Can give a patient a diagnosis"))
+    hospital = models.ForeignKey('hospital')
+
+    def __repr__(self):
+        return repr([self.first_name, self.last_name, self.username, self.email, self.salary])
+
+
+class Nurse(Employee):
+    class Meta:
+        # Without this, the Nurse class inherits the verbose name of the User.
+        # This causes it to appear as "User" in the admin site.
+        verbose_name = "Nurse";
+
+    def __repr__(self):
+        return repr([self.first_name, self.last_name, self.username, self.password, self.email, self.salery])
+
+
+class SuperAdmin(User):
+    def __init__(self, first_name, last_name, password, username, email):
+        SuperAdmin = User.objects.create_user(username=username, password=password, first_name=first_name,
+                                              last_name=last_name, email=email, is_staff=True, is_superuser=True)
+        SuperAdmin.save()
+
+    def __repr__(self):
+        return repr([self.first_name, self.last_name, self.username, self.password, self.email, self.role, self.salery])
+
+
+class ScheduleItem(models.Model):
+    start_time = models.DateTimeField('Appointment Time')
+    end_time = models.DateTimeField('End Time')
+    description = models.TextField(max_length=500)
+    person = models.ForeignKey(Patient, default=None, related_name="my_events")
+    doctor = models.ForeignKey(Doctor, default=None, related_name="doctor_list")
+    verify = models.BooleanField(default=False, editable=True)
+    accept_appointment = models.BooleanField(default=False, editable=True)
+
+    def create_schedule(self, StartTime, EndTime, Description):
+        schedule = self.create(start_time=StartTime, end_time=EndTime, description=Description)
+        return schedule
+
+    def __str__(self):
+        return self.description
+
+
+class Appointment(models.Model):
+    patient_name = models.CharField(max_length=250)
+    doctor_name = models.CharField(max_length=250)
+    hospital = models.CharField(max_length=250)
+
+    def create_appointment(self, PatientName, DoctorsName, Hospital):
+        appointment = self.create(patient_name=PatientName, doctor_name=DoctorsName, hospital=Hospital)
+        return appointment
+
+
+class Hospital(models.Model):
+    name = models.CharField(max_length=250)
+
+    def create_hospital(self, HospitalName):
+        hospital = self.create(name=HospitalName)
+        return hospital
+
+
+class InsurancePlan(models.Model):
+    name = models.CharField(max_length=30)
+    description = models.TextField(max_length=500)
+
+
+class LogItem(models.Model):
+    time = models.DateTimeField()
+    subject = models.CharField(default=None, null=True, max_length=50)
+    action = models.IntegerField()
+    actor = models.ForeignKey(User, default=None, null=True, related_name="actor")
+
+    # def __init__(self, Time, Subject, ActionFlag, Actor = None):
+    #     Item = super(LogItem,self).__init__(self,Time=Time, Subject=Subject, Action = LogItem.ActionDictionary[ActionFlag],Actor=Actor)
+    #     Item.save(self)
+    #     return Item
+
+    def create_log_item(self, Actor, Action, Subject, Time):
+        item = self.create(actor=Actor, action=Action, subject=Subject, time=Time)
+        return item
+
+    # post_init
+    def action_string(self):
+        action_dictionary = {0: 'CREATED', 1: 'EDITED', 2: 'DELETED', 3: 'LOGGED IN', 4: 'READ', 5: 'ADMITTED TO',
+                             6: 'DISCHARGED FROM',}
+        return action_dictionary.get(self.action)
+
+
+class Message(models.Model):
+    sender = models.ForeignKey(User, default=None, null=True, related_name="sender")
+    receiver = models.ForeignKey(User, default=None, null=True, related_name="receiver")
+    text = models.TextField(max_length=300)
+
+
+class Condition(models.Model):
+    condition_name = models.CharField(max_length=250)
+
+    def create_conditon(self, condition_name):
+        condition = self.create(condition_name=condition_name)
+        return condition
+
+
+class Drug(models.Model):
+    drug_name = models.CharField(max_length=250)
+
+    def create_drug(self, drug_name):
+        drug = self.create(drug_name=drug_name)
+        return drug
+
+
+class Diagnosis(models.Model):
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
+    doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE)
+    condition = models.ForeignKey(Condition, on_delete=models.CASCADE)
+    date_of_diagnosis = models.DateField(default=0)
+    doctors_notes = models.CharField(max_length=2500)
+
+    def create_diagnosis(self, condition, patient, doctor, doctors_notes, date_of_diagnosis):
+        diagnosis = self.create(condition=condition, patient=patient, doctor=doctor, date_of_diagnosis=date_of_diagnosis,
+                                  doctors_notes=doctors_notes)
+        return diagnosis
+
+class Prescription(models.Model):
+    drug = models.ForeignKey(Drug, on_delete=models.CASCADE)
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
+    doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE)
+    doctors_notes = models.CharField(max_length=2500)
+    date_prescribed = models.DateField(default=0)
+
+    def create_prescription(self, drug, patient, doctor, doctors_notes, date_prescribed):
+        prescription = self.create(drug=drug, patient=patient, doctor=doctor, date_prescribed=date_prescribed,
+                                  doctors_notes=doctors_notes)
+        return prescription
+
+
+class TestResult(models.Model):
+    name = models.CharField(max_length=200)
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE)
+    doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE)
+    date_of_test = models.DateField(default=0)
+    results = models.CharField(max_length=3, choices=TEST_CHOICES)
+    #test_file = models.FileField(upload_to="documents/")
+
+    def create_test(self, name, patient, doctor, date_of_test, results):
+        testresults = self.create(name=name, patient=patient, doctor=doctor, date_of_test=date_of_test,
+                                  results=results)
+        return testresults
+
+class Statistic(models.Model):
+    """
+    Model for creating statistics
+        statistic type: 0 = Prescriptions, 1 = Diagnosis, 2 = Average Length of Stay, 3 = Average Number of Vists Per
+                        Patient, 4 = number of Patients Admitted to Hospital
+        statistic value: The value that is of interest
+        statistic string: For when the statistic needs a string associated with it
+    """
+    statistic_type = models.IntegerField()
+    statistic_value = models.IntegerField()
+    statistic_string = models.CharField(max_length=250)
+
+
+
+

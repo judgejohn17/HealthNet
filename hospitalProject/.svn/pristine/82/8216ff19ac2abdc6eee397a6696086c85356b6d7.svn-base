@@ -1,0 +1,18 @@
+{% extends 'healthnet/base/base_2.html' %}
+
+{% block content %}
+    <h1>Send message</h1>
+
+    <div>
+        <strong>Send Messages here:</strong><br>
+        {%if sent%}
+            <h1>Your Message has been sent!</h1>
+        {%else%}
+            <form id="user_form" method="POST" action="" enctype="multipart/form-data">
+                {% csrf_token %}
+                {{message_form}}
+                <input type="submit" name="submit" value="Send Message"/>
+            </form>
+        {%endif%}
+    </div>
+{% endblock %}

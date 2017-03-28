@@ -1,0 +1,17 @@
+{% extends 'healthnet/base/base_2.html' %}
+
+{% block content %}
+   <h1>Appointments</h1>
+        <body>
+        <ul>
+
+        {% for item in Appointment %}
+               <li> Description: {{ item.description }} <br/>Start Time: {{ item.start_time }} <br/>EndTime: {{ item.end_time }} <br/>Patient: {{ item.person }}  <br/>
+               <a href = '/healthnet/verify/{{ item.id }}'>Verify Appointment</a></li>
+
+
+        {% endfor %}
+
+        </ul>
+        </body>
+{% endblock %}

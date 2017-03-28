@@ -1,0 +1,14 @@
+{% extends 'healthnet/base/base_2.html' %}
+
+{% block content %}
+    <h1>System Log</h1>
+    <ul>
+    {% for item in log %}
+        {% if item.subject == none %}
+            <li>{{ item.time }}: {{ item.actor.username }} {{ item.action_string }} </li>
+        {% else %}
+            <li>{{ item.time }}: {{ item.actor.username }} {{ item.action_string }} {{ item.subject }} </li>
+        {% endif %}
+    {% endfor %}
+    </ul>
+{% endblock %}

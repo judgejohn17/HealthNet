@@ -1,0 +1,13 @@
+{% extends 'healthnet/base/base_2.html' %}
+
+{% block content %}
+    <h1>Create Prescription</h1>
+    <p>To create a new prescription, edit the cooresponding fields below.</p>
+    <div>
+        <form action = "" method = "post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            </br><input type="submit" value="Save">
+        </form>
+    </div>
+{% endblock %}

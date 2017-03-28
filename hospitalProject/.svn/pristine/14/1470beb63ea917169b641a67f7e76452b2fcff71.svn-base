@@ -1,0 +1,46 @@
+{% extends 'healthnet/base/base_2.html' %}
+
+{% block content %}
+    <h1>Statistics</h1>
+
+    <h2>Number Of Prescriptions Per Drug</h2>
+
+    <ul>
+    {% for item in statistic_array %}
+        {% if item.statistic_type == 0 %}
+            <li> Drug: {{item.statistic_string}} <br/> Amount of Times Prescribed: {{item.statistic_value}}  </li>
+        {% endif %}
+    {% endfor %}
+    </ul>
+
+    <h2>Number Of Diagnoses Per Condition</h2>
+
+    <ul>
+    {% for item in statistic_array %}
+        {% if item.statistic_type == 1 %}
+            <li> Condition: {{item.statistic_string}} <br/> Amount of Time Diagnosed: {{item.statistic_value}}  </li>
+        {% endif %}
+    {% endfor %}
+    </ul>
+
+    <h2>Average Number of Patients Per Visit:</h2>
+
+    <ul>
+    {% for item in statistic_array %}
+        {% if item.statistic_type == 3 %}
+            <li> Number of Visits: {{item.statistic_value}}  </li>
+        {% endif %}
+    {% endfor %}
+    </ul>
+
+    <h2>Number Of Patients Admitted to Each Hospital</h2>
+
+    <ul>
+    {% for item in statistic_array %}
+        {% if item.statistic_type == 4 %}
+            <li> Hospital: {{item.statistic_string}} <br/> Number of Patients: {{item.statistic_value}}  </li>
+        {% endif %}
+    {% endfor %}
+    </ul>
+
+{% endblock %}

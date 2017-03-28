@@ -1,0 +1,12 @@
+{% extends 'healthnet/base/base_2.html' %}
+
+{% block content %}
+    <h1>message_items</h1>
+        <body>
+        <ul>
+        {% for item in message_items %}
+               <li><br> Text: {{ item.text }} <br/> </li>
+        {% endfor %}
+        </ul>
+        </body>
+{% endblock %}

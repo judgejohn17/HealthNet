@@ -1,0 +1,16 @@
+{% extends 'healthnet/base/base_2.html' %}
+
+{% block content %}
+    <h1>Make an Appointment</h1>
+    <p>
+        to make an appointment, please submit the requested information. Your appointment request will be reviewed
+        later by a doctor.
+    </p>
+    <div>
+        <form enctype="multipart/form-data" action = "" method = "post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            </br><input type="submit" value="Make Appointment">
+        </form>
+    </div>
+{% endblock %}

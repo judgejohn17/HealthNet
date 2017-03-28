@@ -1,0 +1,151 @@
+Contents:
+    Blank Lines
+    Indentation
+    Line Length
+    Naming
+        Classes
+            Forms
+            Models
+            Views
+        Functions
+        Templates
+        URLs
+        Variables
+        Quick Reference
+    Ordering/Organization
+    Template Syntax
+
+Blank Lines:
+    There should be two blank lines between top-level
+    function definitions and class definitions. There should
+    be a single blank line between in-class methods, like
+    so:
+    
+        def do_a_thing(object):
+            return object + thing
+        
+        
+        Class Dog
+            tail_length = 3
+        
+            def wag_tail(self):
+                tail_length = tail_length + 1
+                tail_length - 1 = tail_length
+        
+            def eat_food(self, food):
+                tail_length = tail_length + 1
+        
+        
+        Class Cat
+            number_of_whiskers = 6
+            
+            def eat_food(self, food):
+                number_of_whiskers = number_of_whiskers - 1
+    
+        
+Indentation:
+    Indentation should be done with 4 space characters
+    in Python files and 2 space characters in HTML 
+    files.
+    
+Line Length:
+    Lines should be no longer than 119 characters.
+
+Naming:
+
+    Classes:
+        Classes should be named with the CapWords
+        convention, like so: 
+            "PythonClass"
+        
+        Forms:
+            Form names should end with the word "Form".
+        
+            If a Form is attached to a specific Model, that
+            form should be the name of that model followed 
+            by "Form", like so:
+                "DogForm"         
+        
+        Models:
+            Model names should be nouns (possibly with 
+            preceding adjectives), named after the object 
+            they represent, like so:
+                "Dog"
+        
+        Views:
+            View names should start with a noun to indicate 
+            what is being presented to the user (i.e. 
+            "List", "UserRelationships", "DogLocation", 
+            ect.) and end with "View", like so:
+                "DogLocationView"
+                
+            If a view extends one of Django's generic views,
+            an attempt should be made to include the name of
+            the extended view in the extending view. So:
+                DogDetailView extends Detail view
+        
+    Functions:
+        Function names should be in lower case, with
+        underscores used for spacing, like so:
+            "Dog.wag_tail()"
+    
+    Templates:
+        Templates should have the same name as their 
+        corresponding view, but should omit "View" from 
+        their name and end end in ".html". They should be in 
+        lower case, with underscores for spacing, like so:
+            "dog_location.html"
+	
+    URLs: 
+        URLs should have the same name as their 
+        corresponding view, but should omit "View" from 
+        their name. They should be in lower case, with 
+        dashes for spacing, like so:
+            "dog-location"
+            
+    Variables:
+	Variable names should be in lower case, with
+        underscores used for spacing, like so:
+            "Dog.tail_length"
+            
+    Quick Reference:
+        Class example:
+            "PythonClass"
+        Form example:
+            "DogForm"
+        Function example:
+            "Dog.wag_tail()"
+        Model example:
+            "Dog"
+        Template example:
+            "dog_location.html"
+        URL example:
+            "dog-location"
+        Variable example:
+            "Dog.tail_length"
+        View example:
+            "DogLocationView"
+
+Ordering/Organization:
+    When a file containse both top level functions and 
+    classes, functions should be ordered before classes in
+    the file
+
+Template Syntax:
+    Template tags and variables should include a space 
+    between their containing brackets and their content, 
+    like so:
+        {{ item.value }}
+        
+    rather than like this:
+        {{item.value}}
+        
+Discussion to have: 
+    Alphabetical Ordering?
+    Comment Conventions?
+    Function views vs class-based views?
+
+    
+    
+
+            

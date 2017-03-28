@@ -1,0 +1,1042 @@
+from django.shortcuts import render, redirect
+from django.views.generic.edit import FormView, CreateView, UpdateView, DeleteView
+from django.contrib.auth.models import User
+from django.views.generic import DetailView, ListView, TemplateView
+from .forms import LoginForm, AppointmentForm, EmployeeAppointmentForm, PatientForm, CreatePatientForm, MessageForm, \
+    CreateDoctorForm, CreateNurseForm, CreateHospitalAdministratorForm, CreateDrugForm, CreateDiagnosisForm, \
+    CreateConditionForm, CreatePrescriptionForm, CreateTestResultsForm, DoctorForm, NurseForm, \
+    Appointment_Verification, HospitalAdministratorForm, appointment_update
+from django.http import HttpResponse, request
+from django.contrib.auth import authenticate, login, logout
+from .models import ScheduleItem, LogItem, Patient, Message, Doctor, Nurse, HospitalAdministrator, Condition, Drug, \
+    Diagnosis, Prescription, TEST_CHOICES, TestResult, Employee, Statistic, Hospital
+from itertools import chain
+import json
+import sqlite3
+import datetime
+from datetime import timedelta
+
+drug_dict = dict()
+condition_dict = dict()
+drug_count_list = []
+condition_count_list = []
+
+def get_employee(user):
+    try:
+        x = user.employee
+        return x
+    except:
+        return None
+
+
+def role(user):
+    try:
+        x = user.patient
+        return "patient"
+    except:
+        pass
+    try:
+        x = user.employee
+    except:
+        pass
+    try:
+        x = x.nurse
+        return "nurse"
+    except:
+        pass
+    try:
+        x = x.doctor
+        return "doctor"
+    except:
+        pass
+    try:
+        x = x.hospitaladministrator
+        return "administrator"
+    except:
+        pass
+    if user.is_superuser:
+        return "superadmin"
+    else:
+        return "none"
+
+
+def check_user(roles, request):
+    """
+    A method for authenticating users accessing a page. It checks to see if the
+    user is logged in, and if they have permission to access the given page. If
+    they are not logged in, or not the proper type of user to view the page,
+    it returns false
+
+    The result of this function should be used to determine if a user has
+    permission to access a view
+
+    :param roles: A list of roles permitted to enter the page. Each one should
+    be given as a string in lowercase.
+        list of roles:
+            patient
+            doctor
+            nurse
+            administrator
+            superadmin
+            all (allows all roles access)
+    :param request: The request from the view being protected.
+    :return: True if the user has permission, false otherwise
+    """
+
+    permission = False
+    if request.user.is_anonymous():
+        return permission
+    for x in roles:
+        if role(request.user) == x or x == "all":
+            print("permission given")
+            permission = True
+    return permission
+
+
+def admit_patient_view(request, patient_pk, hospital_pk):
+    """
+    Admits a chosen patient to a chosen hospital by changing the the patient's
+    "admission" foreign key relationship
+    :param patient_pk: The patient to be admitted
+    :param hospital_pk: The hospital to admit the patient to
+    """
+
+    if not (check_user(('doctor','administrator',), request)):
+        return access_denied(request)
+
+
+
+    patient = Patient.objects.get(pk=patient_pk)
+    hospital = Hospital.objects.get(pk=hospital_pk)
+    patient.admission = hospital
+    patient.save()
+
+    LogItem(actor=request.user, action=5, time=datetime.datetime.now(), subject=hospital.name).save()
+
+    return render(request,'healthnet/hospital_admission/admit_patient.html',{'patient':patient,'hospital':hospital})
+
+
+def discharge_patient_view(request, patient_pk):
+    """
+    discharges a chosen patient from a hospital by changing the the patient's
+    "admission" foreign key relationship to None
+    :param patient: The patient to be discharged
+    """
+
+    if not (check_user(('doctor','administrator',), request)):
+        return access_denied(request)
+
+    patient = Patient.objects.get(pk=patient_pk)
+    hospital = patient.admission
+    patient.admission = None
+    patient.save()
+
+    LogItem(actor=request.user, action=6, time=datetime.datetime.now(), subject=hospital.name).save()
+
+    return render(request,'healthnet/hospital_admission/discharge_patient.html',
+                  {'patient':patient,'hospital':hospital})
+
+
+def transfer_patient_view(request, patient_pk, hospital_pk):
+    """
+    Admits a chosen patient to a chosen hospital by changing the the patient's
+    "admission" foreign key relationship
+    :param patient_pk: The patient to be admitted
+    :param hospital_pk: The hospital to admit the patient to
+    """
+
+    if not (check_user(('doctor','administrator'), request)):
+        return access_denied(request)
+
+    patient = Patient.objects.get(pk=patient_pk)
+    hospital_to = Hospital.objects.get(pk=hospital_pk)
+    hospital_from = patient.admission
+    patient.admission = hospital_to
+    patient.save()
+
+    LogItem(actor=request.user, action=6, time=datetime.datetime.now(), subject=hospital_from.name).save()
+    LogItem(actor=request.user, action=5, time=datetime.datetime.now(), subject=hospital_to.name).save()
+
+    return render(request,'healthnet/hospital_admission/transfer_patient.html',
+                  {'patient':patient, 'hospital_to':hospital_to, 'hospital_from':hospital_from})
+
+
+def access_denied(request):
+    """
+    Returns a redirection to be used whenever a user is denied access
+
+    :param request:
+    :return: An HttpResponseRedirect based on the request given
+    """
+
+    return redirect('access-denied')
+
+
+def send_appointments_as_JSON(request):
+    scheduled_items = ScheduleItem.objects.all()
+    schedule_items_one=scheduled_items.filter(person=request.user,accept_appointment=True)
+    print(schedule_items_one)
+    json_list = []
+
+    for item in schedule_items_one:
+        json_entry = {'title': item.description, 'start': str(item.start_time),'end':str(item.end_time)}
+        json_list.append(json_entry)
+
+    return HttpResponse(json.dumps(json_list), content_type='application/json')
+
+
+def landing_view(request):
+    """
+    Display options based on user permissions (for example, give a
+    user with permission to view the activity log an option to view
+    the activity log)
+    """
+    if not (check_user(('all',), request)):
+        return access_denied(request)
+
+    return render(request, 'healthnet/landing.html', {"user": request.user, "role": role(request.user),})
+
+
+def activity_log_view(request):
+    """
+    View all the activities that have been logged.
+    """
+
+    log = LogItem.objects.order_by('time').all();
+    if not check_user(('administrator','superadmin'), request):
+        return access_denied(request)
+
+    LogItem(actor=request.user, action=4, time=datetime.datetime.now(), subject = 'Action Log').save()
+
+    return render(request, 'healthnet/logging/log.html', {'log': log})
+
+
+def show_calendar(request):
+    """
+    Allows the user to view scheduled events. The calendar will only display
+    events the user has permission to view.
+    """
+    if not check_user(('all',), request):
+        return access_denied(request)
+    list = sqlite3.connect('db.sqlite3')
+    with list:
+        X = []
+        X.append(ScheduleItem.objects.all())
+
+    return render(request, 'healthnet/calendar/calendar.html', {'name': X})
+
+
+def calendar_view(request):
+    """
+    View all the Schedule Items
+    """
+    if not check_user(('all',), request):
+        return access_denied(request)
+    calendar_items = ScheduleItem.objects.all()
+    x = {"Calendar": calendar_items}
+    return render(request, 'healthnet/calendar/calendar.html', x)
+
+
+def logout_view(request):
+    logout(request)
+    return redirect("/healthnet/")
+
+
+def list_appointments(request):
+
+    if not check_user(('doctor',), request):
+        return access_denied(request)
+    appointment_items = ScheduleItem.objects.filter(doctor=request.user)
+    print(appointment_items)
+    x = {"Appointment": appointment_items}
+    print(x)
+    return render(request, 'healthnet/calendar/patient_appointment.html', x)
+
+
+def confirm_appointment(request, pk):
+
+    if not check_user(('doctor',), request):
+        return access_denied(request)
+
+    item = ScheduleItem.objects.filter(id=pk)[0]
+
+    template_name = 'healthnet/calendar/confirm.html'
+    if request.method== 'POST':
+            form1 = Appointment_Verification(request.POST,instance=item)
+
+    else:
+        form1 = Appointment_Verification(instance=item)
+
+
+    if form1.is_valid():
+        form1.save()
+        # var=form1.save(commit=False)
+        # var.verify=False
+
+
+    return render(request, template_name, context={'form': form1})
+
+
+def list_appointments_delete(request):
+
+    if not check_user(('doctor',), request):
+        return access_denied(request)
+    appointment_items = ScheduleItem.objects.filter(doctor=request.user)
+    print(appointment_items)
+    x = {"Appointment": appointment_items}
+    print(x)
+    return render(request, 'healthnet/calendar/delete_appointment.html', x)
+
+
+def update_appointment(request):
+    if not check_user(('patient',), request):
+        return access_denied(request)
+    appointment_items = ScheduleItem.objects.filter(person=request.user,verify=False)
+    x={"Appointment":appointment_items}
+    return render(request, 'healthnet/calendar/personal_update.html', x)
+
+
+def update_Appointment(request,pk):
+    if not check_user(('patient',), request):
+        return access_denied(request)
+    item = ScheduleItem.objects.filter(id=pk)[0]
+
+    template_name = 'healthnet/calendar/confirm.html'
+    if request.method== 'POST':
+              form1 = appointment_update(request.POST,instance=item)
+
+    else:
+            form1 = appointment_update(instance=item)
+
+
+    if form1.is_valid():
+        form1.save()
+           # var=form1.save(commit=False)
+           # var.verify=False
+
+
+    return render(request, template_name, context={'form': form1})
+
+
+def update_appointment_nurse(request):
+
+    if not check_user(('nurse',), request):
+        return access_denied(request)
+
+    appointments=ScheduleItem.objects.filter(accept_appointment=False)
+    x={"Appointment":appointments}
+    return render(request, 'healthnet/calendar/update_nurse.html', x)
+
+
+def update_Appointment_nurse(request,pk):
+
+    if not check_user(('nurse',), request):
+        return access_denied(request)
+
+    item = ScheduleItem.objects.filter(id=pk)[0]
+
+    template_name = 'healthnet/confirm.html'
+    if request.method== 'POST':
+              form1 = appointment_update(request.POST,instance=item)
+
+    else:
+            form1 = appointment_update(instance=item)
+
+
+    if form1.is_valid():
+        form1.save()
+        HttpResponse("Appointment updated")
+           # var=form1.save(commit=False)
+           # var.verify=False
+
+
+    return render(request, template_name, context={'form': form1})
+
+
+class LoginFormView(FormView):
+    """
+    Log in to an existing account
+    """
+
+    template_name = 'healthnet/index.html'
+    form_class = LoginForm
+
+    def __repr__(self):
+        return repr([self.template_name, self.form_class])
+
+    def form_valid(self, form):
+        login_user = authenticate(username=form["username"].value(), password=form["password"].value())
+        if login_user is not None:
+            if login_user.is_active:
+                login(self.request, login_user)
+
+                LogItem(actor=login_user, action=3, time=datetime.datetime.now()).save()
+
+                return redirect('landing/', {'username': login_user.username})
+                #return render(self.request, 'healthnet/landing.html', {'username': login_user.username})
+            else:
+                return HttpResponse("Disabled Account")
+        else:
+            return render(self.request, 'healthnet/invalid_login.html')
+
+
+def message_index(request):
+    if not check_user(('patient','nurse','doctor','administrator'), request):
+        return access_denied(request)
+    messages = Message.objects.filter(receiver__username=request.user.username)
+    context = {'messages': messages}
+    return render(request, 'healthnet/messaging/message_index.html', context=context)
+    #return HttpResponse('<h1>Hey, you made it to the message page!</h1>')
+
+
+def send_message(request):
+    if not check_user(('patient','nurse','doctor','administrator',), request):
+        return access_denied(request)
+    sent= False
+    if request.method == "POST":
+        message_form = MessageForm(data=request.POST)
+        if message_form.is_valid():
+            msg = message_form.save(commit=False)
+            msg.sender = request.user
+            msg.save()
+            sent=True
+
+        else:
+            return HttpResponse(message_form.errors)
+
+    message_form = MessageForm()
+    context={'message_form':message_form, 'sent':sent}
+    return render(request, 'healthnet/messaging/messages.html', context=context)
+
+
+def list_appointments_patients(request):
+    if not check_user(('patient',), request):
+        return access_denied(request)
+    appointment_items=ScheduleItem.objects.filter(person=request.user)
+    x={'Appointment':appointment_items}
+    return render(request, 'healthnet/calendar/delete_appointment.html', x)
+
+
+class CreateAccountView(CreateView):
+    """
+    Register a new patient account.
+    """
+
+    model = Patient
+    template_name = 'healthnet/users/registration.html'
+    form_class = CreatePatientForm
+
+    def form_valid(self, form):
+
+        form.instance.set_password(form.instance.password)
+
+        LogItem(actor=None, action=0, time=datetime.datetime.now(), subject=form['username'].value()).save()
+
+        return super(CreateAccountView, self).form_valid(form)
+
+    def __repr__(self):
+        return repr([self.template_name, self.form_class, self.model])
+
+
+class CreateDoctorAccountView(CreateView):
+    """
+    Register a new Doctor account.
+    """
+
+    model = Doctor
+    template_name = 'healthnet/users/registration.html'
+    form_class = CreateDoctorForm
+
+    def form_valid(self, form):
+        form.instance.set_password(form.instance.password)
+
+        LogItem(actor=self.request.user, action=0, time=datetime.datetime.now(),
+                subject=form['username'].value()).save()
+
+        return super(CreateDoctorAccountView, self).form_valid(form)
+
+    def get(self, request, *args, **kwargs):
+        if not check_user(('administrator',), request):
+            return access_denied(request)
+        return super(CreateDoctorAccountView,self).get(self, request, *args, **kwargs)
+
+    def __repr__(self):
+        return repr([self.template_name, self.form_class, self.model])
+
+
+class CreateNurseAccountView(CreateView):
+    """
+    Register a new Doctor account.
+    """
+
+    model = Nurse
+    template_name = 'healthnet/users/registration.html'
+    form_class = CreateNurseForm
+
+    def form_valid(self, form):
+        form.instance.set_password(form.instance.password)
+
+        LogItem(actor=self.request.user, action=0, time=datetime.datetime.now(),
+                subject=form['username'].value()).save()
+
+        return super(CreateNurseAccountView, self).form_valid(form)
+
+    def get(self, request, *args, **kwargs):
+        if not check_user(('administrator',), request):
+            return access_denied(request)
+        return super(CreateNurseAccountView,self).get(self, request, *args, **kwargs)
+
+    def __repr__(self):
+        return repr([self.template_name, self.form_class, self.model])
+
+
+class CreateAdministratorAccountView(CreateView):
+    """
+    Register a new Doctor account.
+    """
+
+    model = HospitalAdministrator
+    template_name = 'healthnet/users/registration.html'
+    form_class = CreateHospitalAdministratorForm
+
+    def form_valid(self, form):
+        form.instance.set_password(form.instance.password)
+
+        LogItem(actor=self.request.user, action=0, time=datetime.datetime.now(),
+                subject=form['username'].value()).save()
+
+        return super(CreateAdministratorAccountView, self).form_valid(form)
+
+    def get(self, request, *args, **kwargs):
+        if not check_user(('administrator',), request):
+            return access_denied(request)
+        return super(CreateAdministratorAccountView,self).get(self, request, *args, **kwargs)
+
+    def __repr__(self):
+        return repr([self.template_name, self.form_class, self.model])
+
+
+class UpdateProfileView(UpdateView):
+    """
+    Provides a form with fields all of the user's data (excluding
+    password).
+    """
+
+    model = Patient
+    form_class = PatientForm
+    template_name = 'healthnet/users/edit_profile.html'
+
+    def form_valid(self, form):
+        LogItem(actor=self.request.user, action=1, time=datetime.datetime.now(),
+                subject=form['username'].value()).save()
+
+        return super(UpdateProfileView, self).form_valid(form)
+
+    def get(self, request, *args, **kwargs):
+
+        # Authentication
+        if not check_user(('all',), request):
+            return access_denied(request)
+
+        if role(request.user) == 'patient':
+            if self.kwargs['pk'] != str(request.user.pk):
+                return access_denied(request)
+
+        return super(UpdateProfileView,self).get(self, request, *args, **kwargs)
+
+    def __repr__(self):
+        return repr([self.template_name, self.form_class, self.model])
+
+
+class UpdateEmployeeView(UpdateView):
+    """
+    Provides a form with fields all of the user's data (excluding
+    password).
+    """
+
+    model = Employee
+    form_class = DoctorForm
+    template_name = 'healthnet/users/edit_employee.html'
+
+    def get(self, request, *args, **kwargs):
+
+        # Authentication
+        if not check_user(('doctor','administrator','nurse',), request):
+            return access_denied(request)
+
+        if role(request.user) == 'nurse' or role(request.user) == 'doctor':
+            if self.kwargs['pk'] != str(request.user.pk):
+                return access_denied(request)
+
+        # selects a form based on the type of employee
+        if role(User.objects.filter(pk = kwargs['pk'])[0]) == "doctor":
+            form_class = DoctorForm
+        elif role(User.objects.filter(pk = kwargs['pk'])[0]) == "nurse":
+            form_class = NurseForm
+        elif role(User.objects.filter(pk = kwargs['pk'])[0]) == "administrator":
+            form_class = HospitalAdministratorForm
+
+        return super(UpdateEmployeeView, self).get(self, request, *args, **kwargs)
+
+    def form_valid(self, form):
+        LogItem(actor=self.request.user, action=1, time=datetime.datetime.now(),
+                subject=form['username'].value()).save()
+
+        return super(UpdateEmployeeView, self).form_valid(form)
+
+    def __repr__(self):
+        return repr([self.template_name, self.form_class, self.model])
+
+
+class ProfileDetailView(DetailView):
+    """
+    Show information on a given patient. Offer an option to edit this
+    information.
+    """
+
+    model = Patient
+    template_name = 'healthnet/users/view_profile.html'
+
+    def get_context_data(self, **kwargs):
+        # Call the base implementation first to get a context
+        context = super(ProfileDetailView, self).get_context_data(**kwargs)
+        object = self.get_object()
+        context['patient'] = object
+        context['role'] = role(self.request.user)
+        context['user'] = self.request.user
+        return context
+
+    def get(self,request,*args,**kwargs):
+
+        # Authentication
+        if not check_user(('all',), request):
+            return access_denied(request)
+
+        if role(request.user) == 'patient':
+            if self.kwargs['pk'] != str(request.user.pk):
+                return access_denied(request)
+
+        LogItem(actor=self.request.user, action=4, time=datetime.datetime.now(),
+                subject= "" + self.get_object().username + "'s Profile").save()
+
+        return super(ProfileDetailView, self).get(self,request,*args,**kwargs)
+
+    def __repr__(self):
+        return repr([self.template_name, self.model])
+
+
+class EmployeeDetailView(DetailView):
+    """
+    Show information on a given patient. Offer an option to edit this
+    information.
+    """
+
+    model = Employee
+    template_name = 'healthnet/users/view_employee.html'
+
+    def get_context_data(self, **kwargs):
+        # Call the base implementation first to get a context
+        context = super(EmployeeDetailView, self).get_context_data(**kwargs)
+
+        object = self.get_object()
+        context['employee'] = object
+        context['role'] = role(self.request.user)
+        context['employee_role'] = role(object)
+        return context
+
+    def get(self,request,*args,**kwargs):
+
+        # Authentication
+        if not check_user(('doctor', 'administrator', 'nurse',), request):
+            return access_denied(request)
+
+        if role(request.user) == 'nurse' or role(request.user) == 'doctor':
+            if self.kwargs['pk'] != str(request.user.pk):
+                return access_denied(request)
+
+        LogItem(actor=self.request.user, action=4, time=datetime.datetime.now(),
+                subject= "" + self.get_object().username + "'s Profile").save()
+
+        return super(EmployeeDetailView, self).get(self,request,*args,**kwargs)
+
+    def __repr__(self):
+        return repr([self.template_name, self.model])
+
+
+class CreateAppointmentView(CreateView):
+    """    Create a new appointment.
+    A view for patients to create appointments for themselves.
+    """
+
+    model = ScheduleItem
+    template_name = 'healthnet/calendar/appointment.html'
+    form_class = AppointmentForm
+    def get(self, request, *args, **kwargs):
+
+        # authentication
+        if not check_user(('all',), request):
+            return access_denied(request)
+
+        return super(CreateAppointmentView,self).get(self, request, *args, **kwargs)
+
+    def form_valid(self, form):
+        form.instance.person = self.request.user.patient
+
+        return super(CreateAppointmentView, self).form_valid(form)
+
+    def __repr__(self):
+        return repr([self.template_name, self.form_class, self.model])
+
+
+class EmployeeCreateAppointmentView(CreateView):
+    """
+    A view for employees to create appointments for patients.
+    """
+
+    model = ScheduleItem
+    template_name = 'healthnet/calendar/appointment.html'
+    form_class = EmployeeAppointmentForm
+
+    def form_valid(self, form):
+
+        try:
+            if str(self.request.user.pk) == str(form.instance.doctor.pk):
+                form.instance.verify = True
+                form.instance.accept_appointment = True
+        except:
+            pass
+
+        return super(EmployeeCreateAppointmentView, self).form_valid(form)
+
+    def get(self, request, *args, **kwargs):
+        if not check_user(('doctor','nurse','administrator','superadmin'), request):
+            return access_denied(request)
+
+        return super(EmployeeCreateAppointmentView, self).get(self, request, *args, **kwargs)
+
+    def __repr__(self):
+        return repr([self.template_name, self.form_class, self.model])
+
+
+class CreateConditionView(CreateView):
+    """
+    Create a new condition
+    """
+    model = Condition
+    template_name = 'healthnet/medical/createcondition.html'
+    form_class = CreateConditionForm
+
+    def get(self, request, *args, **kwargs):
+
+        # authentication
+        if not check_user(('doctor','administrator','superadmin'), request):
+            return access_denied(request)
+
+        return super(CreateConditionView, self).get(self, request, *args, **kwargs)
+
+    def __repr__(self):
+        return repr([self.template_name, self.form_class, self.model])
+
+
+class CreateDrugView(CreateView):
+    """
+    Create a new drug
+    """
+    model = Drug
+    template_name = 'healthnet/medical/createdrug.html'
+    form_class = CreateDrugForm
+
+    def get(self, request, *args, **kwargs):
+
+        # authentication
+        if not check_user(('doctor','administrator','superadmin'), request):
+            return access_denied(request)
+
+        return super(CreateDrugView, self).get(self, request, *args, **kwargs)
+
+    def __repr__(self):
+        return repr([self.template_name, self.form_class, self.model])
+
+
+class CreateDiagnosisView(CreateView):
+    """
+    Create a new diagnosis
+    """
+
+    model = Diagnosis
+    template_name = 'healthnet/medical/creatediagnosis.html'
+    form_class = CreateDiagnosisForm
+
+    def get(self, request, *args, **kwargs):
+
+        # authentication
+        if not check_user(('administrator','doctor','superadmin'), request):
+            return access_denied(request)
+
+        return super(CreateDiagnosisView, self).get(self, request, *args, **kwargs)
+
+    def form_valid(self, form):
+        form.instance.doctor=self.request.user.employee.doctor
+        return super(CreateDiagnosisView, self).form_valid(form)
+
+
+    def __repr__(self):
+        return repr([self.template_name, self.form_class, self.model])
+
+
+class CreatePrescriptionView(CreateView):
+    """
+    Create a new prescription
+    """
+    model = Prescription
+    template_name = 'healthnet/medical/createprescription.html'
+    form_class = CreatePrescriptionForm
+
+    def get(self, request, *args, **kwargs):
+
+        # authentication
+        if not check_user(('doctor','administrator','superadmin',), request):
+            return access_denied(request)
+
+        return super(CreatePrescriptionView, self).get(self, request, *args, **kwargs)
+
+    def form_valid(self, form):
+        form.instance.doctor=self.request.user.employee.doctor
+        return super(CreatePrescriptionView, self).form_valid(form)
+
+    def __repr__(self):
+        return repr([self.template_name, self.form_class, self.model])
+
+
+class CreateTestResultsView(CreateView):
+    """
+    Create new test results
+    """
+    model = TestResult
+    template_name = 'healthnet/medical/createtestresults.html'
+    form_class = CreateTestResultsForm
+
+    def get(self, request, *args, **kwargs):
+
+        # authentication
+        if not check_user(('administrator','doctor','superadmin',), request):
+            return access_denied(request)
+
+        return super(CreateTestResultsView, self).get(self, request, *args, **kwargs)
+
+    def form_valid(self, form):
+        form.instance.doctor=self.request.user.employee.doctor
+        return super(CreateTestResultsView, self).form_valid(form)
+
+    def __repr__(self):
+        return repr([self.template_name, self.form_class, self.model])
+
+
+class PatientListView(ListView):
+    """
+    A view that lists all of a given doctor's patients
+    """
+    context_object_name = 'patient_list'
+    template_name = 'healthnet/users/patients.html'
+    model = Patient
+
+    def get(self, request, *args, **kwargs):
+
+        # authentication
+        if not check_user(('doctor','nurse','administrator',), request):
+            return access_denied(request)
+
+        super(PatientListView, self).get(self, request, *args, **kwargs)
+
+    def get_queryset(self):
+        list = super(PatientListView,self).get_queryset()
+        return list.filter(doctor__pk = self.kwargs['pk'])
+
+
+def StatisticsView(request):
+    """
+    A view showing the different statistics for the hospital admins
+    """
+    statistic_array = Statistic.objects.all()
+    for item in statistic_array:
+        item.delete()
+
+    #Get the number of times each drug has been prescribed
+    drug_list = Drug.objects.all()
+    for drug in drug_list:
+        drug_count = Prescription.objects.filter(drug = drug).count()
+        Statistic(statistic_type =0, statistic_string=drug.drug_name, statistic_value=drug_count).save()
+
+    #Get the number of how many people have been diagnosed to be afflicted with a conditon
+    condition_list = Condition.objects.all()
+    for condition in condition_list:
+        condition_count = Diagnosis.objects.filter(condition=condition).count()
+        Statistic(statistic_type=1, statistic_string=condition.condition_name, statistic_value=condition_count).save()
+
+    # #Get the average length of stay for each patient
+    # total_seconds = 0.0
+    # visit_list = LogItem.objects.filter(action=5)
+    # discharge_list = LogItem.objects.filter(action=6)
+    # visit_count = 0
+    # for visit in visit_list:
+    #     visit_count = visit_count + 1
+    #     if visit_count <= discharge_list.count():
+    #         total_seconds = total_seconds + timedelta(datetime(0,0,0),visit.time).total_seconds()
+    #
+    # for discharge in discharge_list:
+    #     total_seconds = total_seconds - discharge.time.total_seconds()
+    #
+    # avg_seconds = total_seconds / Patient.objects.all().count()
+    # time = datetime.min + timedelta(days=avg_seconds - 1)
+    # print(str(time.days))
+    # Statistic(statistic_type=2, statistic_string="", statistic_value=(time.days)).save()
+
+    #Get the average number of visits per patient for each hospital
+    visit_count = LogItem.objects.filter(action=5).count()
+    patient_count = Patient.objects.all().count()
+    Statistic(statistic_type=3, statistic_string="", statistic_value=(visit_count/patient_count)).save()
+
+    #Get the number of patients admitted to each hospital
+    hospital_list = Hospital.objects.all()
+    for hospital in hospital_list:
+        patient_count = Patient.objects.filter(admission=hospital).count()
+        Statistic(statistic_type=4, statistic_string=hospital.name, statistic_value=patient_count).save()
+
+    #Gather statistics and sort by type
+    statistic_array = Statistic.objects.order_by('-statistic_value')
+
+    return render(request, 'healthnet/statistics/statistics.html', {'statistic_array': statistic_array})
+
+
+class DoctorListView(ListView):
+    """
+    A view that lists all doctors
+    """
+    context_object_name = 'doctor_list'
+    template_name = 'healthnet/users/doctors.html'
+    model = Doctor
+
+    def get_queryset(self):
+        list = super(DoctorListView,self).get_queryset()
+        return list.order_by('last_name')
+
+    def get_context_data(self, **kwargs):
+        context = super(DoctorListView,self).get_context_data(**kwargs)
+        context['role'] = role(self.request.user)
+        return context
+
+    def get(self, request, *args, **kwargs):
+
+        # authentication
+        if not check_user(('doctor', 'nurse','administrator','superadmin'), request):
+            return access_denied(request)
+
+        return super(DoctorListView, self).get(self, request, *args, **kwargs)
+
+
+class AccessDeniedView(TemplateView):
+    """
+    A view for users trying to access pages without proper permission
+    """
+
+
+    template_name = 'healthnet/invalid_login.html'
+
+
+class DeleteAppointment(DeleteView):
+    model=ScheduleItem
+    template_name = 'healthnet/calendar/confirm_delete.html'
+
+    def get(self, request, *args, **kwargs):
+        context = super(DeleteAppointment, self).get_context_data(**kwargs)
+        object = self.get_object()
+        context['item'] = object
+        return context
+
+
+class MedicalInformationDiagnosisView(ListView):
+    template_name = 'healthnet/patient_medical_information/medical_information_diagnosis.html'
+    model = Diagnosis
+    context_object_name = 'diagnosis_list'
+
+    def get_queryset(self):
+        list = super(MedicalInformationDiagnosisView,self).get_queryset()
+        list.filter(patient_id=self.request.user.id)
+        return list.order_by('date_of_diagnosis')
+
+    def get_context_data(self, **kwargs):
+        context = super(MedicalInformationDiagnosisView,self).get_context_data(**kwargs)
+        context['role'] = role(self.request.user)
+        return context
+
+
+class MedicalInformationPrescriptionView(ListView):
+    template_name = 'healthnet/patient_medical_information/medical_information_prescription.html'
+    model = Prescription
+    context_object_name = 'prescription_list'
+
+    def get_queryset(self):
+        list = super(MedicalInformationPrescriptionView,self).get_queryset()
+        list.filter(patient_id=self.request.user.id)
+        return list.order_by('date_prescribed')
+
+    def get_context_data(self, **kwargs):
+        context = super(MedicalInformationPrescriptionView,self).get_context_data(**kwargs)
+        context['role'] = role(self.request.user)
+        return context
+
+
+class MedicalInformationTestResultView(ListView):
+    template_name = 'healthnet/patient_medical_information/medical_information_testresult.html'
+    model = TestResult
+    context_object_name = 'testresult_list'
+
+    def get_queryset(self):
+        list = super(MedicalInformationTestResultView,self).get_queryset()
+        list.filter(patient_id=self.request.user.id)
+        return list.order_by('date_of_test')
+
+    def get_context_data(self, **kwargs):
+        context = super(MedicalInformationTestResultView,self).get_context_data(**kwargs)
+        context['role'] = role(self.request.user)
+        return context
+
+
+def deleteprescription(request):
+    if not check_user(('doctor',), request):
+        return access_denied(request)
+    prescription_items=Prescription.objects.filter(doctor=request.user.employee.doctor)
+    x={'Prescription':prescription_items}
+    return render(request, 'healthnet/medical/deleteprescription.html', x)
+
+
+class DeletePrescription(DeleteView):
+    model=Prescription
+    template_name = 'healthnet/medical/confirm_delete_prescription.html'
+
+    def get_context_data(self, **kwargs):
+        context = super(DeletePrescription, self).get_context_data(**kwargs)
+        object = self.get_object()
+        context['item'] = object
+        return context
+
+
+class AllPatientListView(ListView):
+    """
+    A view that lists all of a given doctor's patients
+    """
+    context_object_name = 'patient_list_all'
+    template_name = 'healthnet/users/all_patients_list.html'
+    model = Patient
+
+    def get(self, request, *args, **kwargs):
+
+        # authentication
+        if not check_user(('doctor','nurse','administrator','superadmin'), request):
+            return access_denied(request)
+
+        return super(AllPatientListView, self).get(self, request, *args, **kwargs)
+
+    def get_queryset(self):
+        patient_list_all = super(AllPatientListView,self).get_queryset()
+        return patient_list_all

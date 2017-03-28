@@ -1,0 +1,7 @@
+{% extends 'healthnet/base/base_1.html' %}
+
+{% block content %}
+    <h1>You're not logged in</h1>
+    <p>To view this page you must be logged in. Please return to the log in page and either log in or register an
+        account</p>
+{% endblock %}

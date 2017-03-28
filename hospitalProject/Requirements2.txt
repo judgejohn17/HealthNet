@@ -1,0 +1,19 @@
+1) Does the receiver needs to be informed about the exported information. To whom can patient export their information? What format does the exported data need to be in?
+	-Export medical info. PDF File
+
+2) Can doctor cancel or postpone patient's appointment? Administrators?
+	-Docotr can cancel appointment. Administrators can as well.
+
+3) What is the format of the test result? Do u want to include the images in the test result
+ or want the test result and images be seperately uploaded?
+	-PDF. Images included
+
+4) Do want a monthly time-frame or a yearly time-frame for system statistics?
+	-Weekly, monthly, annual.
+
+5) How would you like to inform the receiver hospital whenever the transfer is made?
+  email, phone etc
+	-Recieving hospital had to approve the transfer before the patient is accepted. 
+
+6) When moving a patient between hospitals can the doctor of the transferring hospital control which hospital the patient goes to? Unsure about patient transfer in general.
+	-All actors 

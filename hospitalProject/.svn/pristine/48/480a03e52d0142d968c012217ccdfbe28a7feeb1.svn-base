@@ -1,0 +1,15 @@
+{% extends 'healthnet/base/base_2.html' %}
+
+{% block content %}
+
+    <h1>Test Results</h1>
+
+    <ul>
+    {% for item in testresult_list %}
+        <li> Test: {{item.name}} <br/> Doctor: {{item.doctor}}
+            <br/> Date Of Test: {{item.date_of_test}} <br/> Results: {{item.results}} <br/>
+            <a href="documents/"+"item.test_file") download>Official Test</a></li>
+    {% endfor %}
+    </ul>
+
+{% endblock %}

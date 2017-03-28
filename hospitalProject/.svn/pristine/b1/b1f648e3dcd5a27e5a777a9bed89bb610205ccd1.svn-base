@@ -1,0 +1,14 @@
+{% extends 'healthnet/base/base_2.html' %}
+
+{% block content %}
+
+    <h1>Diagnoses</h1>
+
+    <ul>
+    {% for item in diagnosis_list %}
+        <li> Condition: {{item.condition.condition_name}} <br/> Doctor: {{item.doctor}}
+            <br/> Date: {{item.date_of_diagnosis}} <br/> Doctor's Notes: {{item.doctors_notes}} </li>
+    {% endfor %}
+    </ul>
+
+{% endblock %}

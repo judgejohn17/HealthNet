@@ -1,0 +1,18 @@
+{% extends 'healthnet/base/base_2.html' %}
+
+{% block content %}
+   <h1>Prescriptions</h1>
+        <body>
+        <ul>
+
+        {% for item in Prescription %}
+               <li> Drug: {{item.drug.drug_name}} <br/> Doctor: {{item.doctor}}
+            <br/> Date: {{item.date_prescribed}} <br/> Doctors Notes: {{item.doctors_notes}}  <br/>
+               <a href = '/healthnet/confirm_delete_prescription/{{ item.id }}'>Delete Prescription</a></li><br/>
+
+
+        {% endfor %}
+
+        </ul>
+        </body>
+{% endblock %}

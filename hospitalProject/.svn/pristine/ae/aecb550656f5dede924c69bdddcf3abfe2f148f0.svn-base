@@ -1,0 +1,51 @@
+
+{% extends 'healthnet/base/base_2.html' %}
+
+{% block content %}
+    <h1>{{ patient.username }}'s Profile</h1>
+    <div>
+        <h2>Personal Information</h2>
+        First Name: {{ patient.first_name }}<br/>
+        Last Name: {{ patient.last_name }}<br/>
+        Date of Birth: {{ patient.date_of_birth }}
+    </div>
+    <div>
+        <h2>Contact Information</h2>
+        Email: {{ patient.email }}<br/>
+        Phone Number: {{ patient.phone_number }}
+    </div>
+    {% if patient.admission != None %}
+    <div>
+        <h2>Admitted Hospital</h2>
+        Currently admitted: {{ patient.admission.name }}
+    </div>
+    {% endif %}
+    {% if role == 'doctor' %}
+        {% if patient.admission == None %}
+            <a href={% url 'admit-patient' patient.pk user.employee.doctor.hospital.pk %}>Admit Patient to
+                {{ user.employee.doctor.hospital.name }}</a><br/>
+        {% else %}
+            <a href={% url 'discharge-patient' patient.pk %}>Discharge Patient</a><br/>
+
+            {% if patient.admission.pk != user.employee.doctor.hospital.pk %}
+                <a href={% url 'transfer-patient' patient.pk user.employee.doctor.hospital.pk%}>Transfer Patient to
+                    {{ user.employee.doctor.hospital.name }}</a><br/>
+            {% endif %}
+        {% endif %}
+        <a href = {% url 'update-profile' pk=patient.pk %}>Edit Profile</a>
+    {% endif %}
+    {% if role == 'administrator' %}
+        {% if patient.admission == None %}
+            <a href={% url 'admit-patient' patient.pk user.employee.hospitaladministrator.hospital.pk %}>Admit Patient to
+                {{ user.employee.hospitaladministrator.hospital.name }}</a><br/>
+        {% else %}
+            <a href={% url 'discharge-patient' patient.pk %}>Discharge Patient</a><br/>
+
+            {% if patient.admission.pk != user.employee.hospitaladministrator.hospital.pk %}
+                <a href={% url 'transfer-patient' patient.pk user.employee.hospitaladministrator.hospital.pk%}>Transfer Patient to
+                    {{ user.employee.hospitaladministrator.hospital.name }}</a><br/>
+            {% endif %}
+        {% endif %}
+    {% endif %}
+    <a href = {% url 'update-profile' pk=patient.pk %}>Edit Profile</a>
+{% endblock %}

@@ -1,0 +1,20 @@
+Questions to ask about the Requirements:
+
+    What is exporting
+
+    What do test results 
+
+    What contact information should be stored?
+        Is it the same information stored for users and emergency contacts?
+    How hospitals will this system span?
+    Should passed appointments be saved
+    
+    Contact information - Phone number - req, alt phone number, email
+    
+    emg cont - name, phone, relationship
+    save passed appointments 
+    avg appointment length 20min
+    
+    presentation length
+     - say name and role in team
+     - core of presentation is design 1650
